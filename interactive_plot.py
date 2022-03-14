@@ -5,6 +5,10 @@
 # Fits a sine wave with noise 
 # Author: David Gallacher
 # Date: March 2022
+#
+# See https://github.com/PySimpleGUI/PySimpleGUI/tree/master/DemoPrograms
+# and https://pysimplegui.readthedocs.io/en/latest/cookbook/ 
+# for more information
 #################################
 
 
