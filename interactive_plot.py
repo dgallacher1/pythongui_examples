@@ -18,10 +18,10 @@ from scipy.optimize import curve_fit
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 #globals
-_VARS = {'window': False,'fig_agg':False,'pltFig':False}
+global_vars = {'window': False,'fig_agg':False,'pltFig':False}
 AppFont = 'Any 16'
 sg.theme('LightBlue')
-linecolor = '#4062c9' #match dark amber theme
+linecolor = '#4062c9' #match light blue theme
 
 #Plot default parameters
 pltPars = {
@@ -62,6 +62,18 @@ def tryFit(_x,_y,_starting,_bounds):
 	return fitYvalues,popt,pcov
 
 
+#make some data for the sine wave and return two np.arrays
+def getData():
+	xData = np.linspace(pltPars['low'],pltPars['high'],num = pltPars['nSamples'])
+	yData = SineWaveFunc(xData,pltPars['amp'],pltPars['phase'],pltPars['freq'],pltPars['offset'])
+	#Add gaussian smearing, proportional to amplitude
+	np.random.seed(pltPars['sd'])
+	#Check before smearing
+	if pltPars['smear']: 
+		yData = yData+np.random.normal(loc=pltPars['smear_mu'],scale=pltPars['smear_sig'],size=pltPars['nSamples'])
+	return xData,yData
+
+
 class Toolbar(NavigationToolbar2Tk):
 	def ___init__(self,*args,**kwargs):
 		super(Toolbar,self).__init(*args,**kwargs)
@@ -85,84 +97,77 @@ def draw_figure_w_toolbar(canvas,figure,canvas_toolbar):
 
 #initialize plot with defaults
 def makePlot():
-	_VARS['pltFig'] = plt.gcf()
+	global_vars['pltFig'] = plt.gcf()
 
 	#Make the data to plot
-	xData = np.linspace(pltPars['low'],pltPars['high'],num = pltPars['nSamples'])	
-	yData = SineWaveFunc(xData,pltPars['amp'],pltPars['phase'],pltPars['freq'],pltPars['offset'])
-	#Add gaussian smearing, proportional to amplitude
-	np.random.seed(pltPars['sd'])
-	#Check before smearing
-	if pltPars['smear']: 
-		yData = yData + np.random.normal(loc=pltPars['smear_mu'], scale=pltPars['smear_sig'], size=pltPars['nSamples'])
+	xData, yData = getData() 
 
 	plt.figure(1)
-	DPI = _VARS['pltFig'].get_dpi()
-	_VARS['pltFig'].set_size_inches(404*3/float(DPI),404/float(DPI))
-	frameMain = _VARS['pltFig'].add_axes((.1,.3,.8,.6))
-	#ax = _VARS['pltFig'].add_subplot(111)
+	DPI = global_vars['pltFig'].get_dpi()
+	global_vars['pltFig'].set_size_inches(404*3/float(DPI),404/float(DPI))
+	frameMain = global_vars['pltFig'].add_axes((.1,.3,.8,.6))
+	#ax = global_vars['pltFig'].add_subplot(111)
 	plt.plot(xData,yData,color=linecolor)
 	plt.ylabel('Amplitude [au]')
 	plt.grid()
 	frameMain.set_xticklabels([]) #Remove x-tic labels for the first frame
 
-	frameRes = _VARS['pltFig'].add_axes((.1,.1,.8,.2))  
+	#Just display an empty fit, assuming fit values aren't set yet
+	frameRes = global_vars['pltFig'].add_axes((.1,.1,.8,.2))  
 	plt.plot(xData,np.zeros_like(xData),'r')
 	plt.grid()
 	plt.xlabel('Time [s]')
 	plt.ylabel('Residuals [(Data-Fit)/Data]',fontsize='x-small')
 
-	_VARS['fig_agg'] = draw_figure_w_toolbar(_VARS['window']['figCanvas'].TKCanvas,_VARS['pltFig'],_VARS['window']['controls_cv'].TKCanvas)
+	global_vars['fig_agg'] = draw_figure_w_toolbar(global_vars['window']['figCanvas'].TKCanvas,global_vars['pltFig'],global_vars['window']['controls_cv'].TKCanvas)
 
 
 #Clear old plot and make a new one
 def updatePlot():
-	_VARS['fig_agg'].get_tk_widget().forget()
-	_VARS['pltFig'].clf()
-	xData = np.linspace(pltPars['low'],pltPars['high'],num = pltPars['nSamples'])
-	yData = SineWaveFunc(xData,pltPars['amp'],pltPars['phase'],pltPars['freq'],pltPars['offset'])
-	#Add gaussian smearing, proportional to amplitude
-	np.random.seed(pltPars['sd'])
-	#Check before smearing
-	if pltPars['smear']: 
-		yData = yData+np.random.normal(loc=pltPars['smear_mu'],scale=pltPars['smear_sig'],size=pltPars['nSamples'])
+	global_vars['fig_agg'].get_tk_widget().forget()
+	global_vars['pltFig'].clf()
+
+	#method to get data for the sine wave
+	xData, yData = getData() 
 	plt.figure(1)
-	DPI = _VARS['pltFig'].get_dpi()
-	_VARS['pltFig'].set_size_inches(404*3/float(DPI),404/float(DPI))
-	frameMain = _VARS['pltFig'].add_axes((.1,.3,.8,.6))
+
+	DPI = global_vars['pltFig'].get_dpi()
+	global_vars['pltFig'].set_size_inches(404*3/float(DPI),404/float(DPI))
+	frameMain = global_vars['pltFig'].add_axes((.1,.3,.8,.6))
 	plt.plot(xData,yData,color=linecolor,label='Simulated Data')
 	plt.ylabel('Amplitude [au]')
 	plt.grid()
 
+	#Just display an empty fit, assuming fit values aren't set yet
 	fitResult = np.zeros_like(xData) 
 	residuals = (fitResult-yData)
 	plt.plot(xData,fitResult,'r--',label='Fit result')
 	plt.legend(loc='upper right')
 
 	frameMain.set_xticklabels([]) #Remove x-tic labels for the first frame
-	frameRes = _VARS['pltFig'].add_axes((.1,.1,.8,.2))  
+	frameRes = global_vars['pltFig'].add_axes((.1,.1,.8,.2))  
 	plt.plot(xData,residuals,'r')
 	plt.grid()
 	plt.xlabel('Time [s]')
 	plt.ylabel('Residuals [Data-Fit]',fontsize='x-small')
 
-	_VARS['fig_agg'] = draw_figure_w_toolbar(_VARS['window']['figCanvas'].TKCanvas,_VARS['pltFig'],_VARS['window']['controls_cv'].TKCanvas)
+	global_vars['fig_agg'] = draw_figure_w_toolbar(global_vars['window']['figCanvas'].TKCanvas,global_vars['pltFig'],global_vars['window']['controls_cv'].TKCanvas)
 
 
 #Replot with new fit 
 def updatePlotWithFit():
-	_VARS['fig_agg'].get_tk_widget().forget()
-	_VARS['pltFig'].clf()
-	xData = np.linspace(pltPars['low'],pltPars['high'],num = pltPars['nSamples'])
-	yData = SineWaveFunc(xData,pltPars['amp'],pltPars['phase'],pltPars['freq'],pltPars['offset'])
-	np.random.seed(pltPars['sd'])
-	#Check before smearing
-	if pltPars['smear']: 
-		yData = yData+np.random.normal(loc=pltPars['smear_mu'],scale=pltPars['smear_sig'],size=pltPars['nSamples'])
+	global_vars['fig_agg'].get_tk_widget().forget()
+	global_vars['pltFig'].clf()
+	
+	#method to get data for the sine wave
+	xData, yData = getData() 
 	plt.figure(1)
-	DPI = _VARS['pltFig'].get_dpi()
-	_VARS['pltFig'].set_size_inches(404*3/float(DPI),404/float(DPI))
-	frameMain = _VARS['pltFig'].add_axes((.1,.3,.8,.6))
+
+
+	plt.figure(1)
+	DPI = global_vars['pltFig'].get_dpi()
+	global_vars['pltFig'].set_size_inches(404*3/float(DPI),404/float(DPI))
+	frameMain = global_vars['pltFig'].add_axes((.1,.3,.8,.6))
 	plt.plot(xData,yData,color=linecolor,label='Simulated Data')
 	plt.ylabel('Amplitude [au]')
 	plt.grid()
@@ -175,7 +180,7 @@ def updatePlotWithFit():
 	plt.plot(xData,fitResult,'r--',label='Fit result')
 	plt.legend(loc='upper right')
 	frameMain.set_xticklabels([]) #Remove x-tic labels for the first frame
-	frameRes = _VARS['pltFig'].add_axes((.1,.1,.8,.2))  
+	frameRes = global_vars['pltFig'].add_axes((.1,.1,.8,.2))  
 	plt.plot(xData,residuals,'r')
 	plt.grid()
 	plt.xlabel('Time [s]')
@@ -183,13 +188,13 @@ def updatePlotWithFit():
 
 	#show RSS of fit
 	rss = getRSS(fitResult,yData)
-	_VARS['window']['_fit_gf'].update(str(rss)[:6])#Only show first six figs.
-	_VARS['window']['_fit_amp'].update(str(fitPars[0])[:6])
-	_VARS['window']['_fit_phase'].update(str(fitPars[1])[:6])
-	_VARS['window']['_fit_freq'].update(str(fitPars[2])[:6])
-	_VARS['window']['_fit_offset'].update(str(fitPars[3])[:6])
+	global_vars['window']['_fit_gf'].update(str(rss)[:6])#Only show first six figs.
+	global_vars['window']['_fit_amp'].update(str(fitPars[0])[:6])
+	global_vars['window']['_fit_phase'].update(str(fitPars[1])[:6])
+	global_vars['window']['_fit_freq'].update(str(fitPars[2])[:6])
+	global_vars['window']['_fit_offset'].update(str(fitPars[3])[:6])
 
-	_VARS['fig_agg'] = draw_figure_w_toolbar(_VARS['window']['figCanvas'].TKCanvas,_VARS['pltFig'],_VARS['window']['controls_cv'].TKCanvas)
+	global_vars['fig_agg'] = draw_figure_w_toolbar(global_vars['window']['figCanvas'].TKCanvas,global_vars['pltFig'],global_vars['window']['controls_cv'].TKCanvas)
 
 
 #Get RSS of fit to display
@@ -204,16 +209,16 @@ def getRSS(fitY,dataY):
 def updateFitVars(vals):
 	#Check that input values aren't empty
 	if vals['fit_amp']:
-		_VARS['window']['_fit_amp'].update(vals['fit_amp'])
+		global_vars['window']['_fit_amp'].update(vals['fit_amp'])
 		fitVars['amp'] = float(vals['fit_amp'])
 	if vals['fit_phase']:
-		_VARS['window']['_fit_phase'].update(vals['fit_phase'])
+		global_vars['window']['_fit_phase'].update(vals['fit_phase'])
 		fitVars['phase'] = float(vals['fit_phase'])
 	if vals['fit_freq']:
-		_VARS['window']['_fit_freq'].update(vals['fit_freq'])
+		global_vars['window']['_fit_freq'].update(vals['fit_freq'])
 		fitVars['freq'] = float(vals['fit_freq'])
 	if vals['fit_offset']:
-		_VARS['window']['_fit_offset'].update(vals['fit_offset'])
+		global_vars['window']['_fit_offset'].update(vals['fit_offset'])
 		fitVars['offset'] = float(vals['fit_offset'])
 
 #Method to update pltPars dictionary with input data
@@ -222,37 +227,37 @@ def updateVars(vals):
 	
 	#Check that input values aren't empty
 	if vals['nsamp']:
-		_VARS['window']['_nsamp'].update(vals['nsamp'])
+		global_vars['window']['_nsamp'].update(vals['nsamp'])
 		pltPars['nSamples'] = int(vals['nsamp'])
 	if vals['low']:
-		_VARS['window']['_low'].update(vals['low'])
+		global_vars['window']['_low'].update(vals['low'])
 		pltPars['low'] = int(vals['low'])
 	if vals['high']:
-		_VARS['window']['_high'].update(vals['high'])
+		global_vars['window']['_high'].update(vals['high'])
 		pltPars['high'] = int(vals['high'])
 	if vals['amp']:
-		_VARS['window']['_amp'].update(vals['amp'])
+		global_vars['window']['_amp'].update(vals['amp'])
 		pltPars['amp'] = float(vals['amp'])
 	if vals['phase']:
-		_VARS['window']['_phase'].update(vals['phase'])
+		global_vars['window']['_phase'].update(vals['phase'])
 		pltPars['phase'] = float(vals['phase'])
 	if vals['offset']:
-		_VARS['window']['_offset'].update(vals['offset'])
+		global_vars['window']['_offset'].update(vals['offset'])
 		pltPars['offset'] = float(vals['offset'])
 	if vals['freq']:
-		_VARS['window']['_freq'].update(vals['freq'])
+		global_vars['window']['_freq'].update(vals['freq'])
 		pltPars['freq'] = float(vals['freq'])
 	if vals['sd']:
-		_VARS['window']['_sd'].update(vals['sd'])
+		global_vars['window']['_sd'].update(vals['sd'])
 		pltPars['sd'] = int(vals['sd'])
 	if vals['smear']:
-		_VARS['window']['_smear'].update(vals['smear'])
+		global_vars['window']['_smear'].update(vals['smear'])
 		pltPars['smear'] = (vals['smear']).lower() in ("t","true","1")
 	if vals['smear_mu']:
-		_VARS['window']['_smear_mu'].update(vals['smear_mu'])
+		global_vars['window']['_smear_mu'].update(vals['smear_mu'])
 		pltPars['smear_mu'] = float(vals['smear_mu'])
 	if vals['smear_sig']:
-		_VARS['window']['_smear_sig'].update(vals['smear_sig'])
+		global_vars['window']['_smear_sig'].update(vals['smear_sig'])
 		pltPars['smear_sig'] = float(vals['smear_sig'])
 
 
@@ -299,34 +304,34 @@ def main():
 	]#End layout
 
 	#Create the actual GUI object and store it globally
-	_VARS['window'] = sg.Window('Test Plotting GUI',layout,finalize=True,resizable=True,element_justification="left",size=(1000,1200))
+	global_vars['window'] = sg.Window('Test Plotting GUI',layout,finalize=True,resizable=True,element_justification="left",size=(1000,1200))
 
 	#Make starting plot
 	makePlot()
 	
 	#Show starting parameters
-	_VARS['window']['_nsamp'].update(pltPars['nSamples'])
-	_VARS['window']['_low'].update(pltPars['low'])
-	_VARS['window']['_high'].update(pltPars['high'])
-	_VARS['window']['_amp'].update(pltPars['amp'])
-	_VARS['window']['_phase'].update(pltPars['phase'])
-	_VARS['window']['_offset'].update(pltPars['offset'])
-	_VARS['window']['_freq'].update(pltPars['freq'])
-	_VARS['window']['_sd'].update(pltPars['sd'])
-	_VARS['window']['_smear'].update(pltPars['smear'])
-	_VARS['window']['_smear_mu'].update(pltPars['smear_mu'])
-	_VARS['window']['_smear_sig'].update(pltPars['smear_sig'])
+	global_vars['window']['_nsamp'].update(pltPars['nSamples'])
+	global_vars['window']['_low'].update(pltPars['low'])
+	global_vars['window']['_high'].update(pltPars['high'])
+	global_vars['window']['_amp'].update(pltPars['amp'])
+	global_vars['window']['_phase'].update(pltPars['phase'])
+	global_vars['window']['_offset'].update(pltPars['offset'])
+	global_vars['window']['_freq'].update(pltPars['freq'])
+	global_vars['window']['_sd'].update(pltPars['sd'])
+	global_vars['window']['_smear'].update(pltPars['smear'])
+	global_vars['window']['_smear_mu'].update(pltPars['smear_mu'])
+	global_vars['window']['_smear_sig'].update(pltPars['smear_sig'])
 	#Starting Fit parameters
-	_VARS['window']['_fit_amp'].update(fitVars['amp'])
-	_VARS['window']['_fit_phase'].update(fitVars['phase'])
-	_VARS['window']['_fit_offset'].update(fitVars['offset'])
-	_VARS['window']['_fit_freq'].update(fitVars['freq'])
+	global_vars['window']['_fit_amp'].update(fitVars['amp'])
+	global_vars['window']['_fit_phase'].update(fitVars['phase'])
+	global_vars['window']['_fit_offset'].update(fitVars['offset'])
+	global_vars['window']['_fit_freq'].update(fitVars['freq'])
 
 
 
 	# Display and interact with the Window using an Event Loop
 	while True:
-		event, values = _VARS['window'].read(timeout=200)
+		event, values = global_vars['window'].read(timeout=200)
 		if event == sg.WIN_CLOSED or event == 'Exit':
 			break
 		#Display updated values
@@ -338,7 +343,7 @@ def main():
 			updateFitVars(values)
 			updatePlotWithFit()
 
-	_VARS['window'].close()
+	global_vars['window'].close()
 
 
 if __name__ == "__main__":
